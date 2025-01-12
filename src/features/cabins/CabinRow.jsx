@@ -1,9 +1,13 @@
 import styled from "styled-components";
 
 import { formatCurrency } from "../../utils/helpers";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { deleteCabin } from "../../services/apiCabins";
-import toast from "react-hot-toast";
+import { FaEdit } from "react-icons/fa";
+import { IoDuplicate } from "react-icons/io5";
+import { MdDelete } from "react-icons/md";
+import { useState } from "react";
+import CreateCabinForm from "./CreateCabinForm";
+import { useDeleteCabin } from "./cabin-hooks/useDeleteCabin";
+import { useCreateCabin } from "./cabin-hooks/useCreateCabin";
 
 const TableRow = styled.div`
   display: grid;
@@ -15,6 +19,10 @@ const TableRow = styled.div`
   &:not(:last-child) {
     border-bottom: 1px solid var(--color-grey-100);
   }
+`;
+const IconContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
 `;
 
 const Img = styled.img`
@@ -45,6 +53,9 @@ const Discount = styled.div`
 `;
 
 const CabinRow = ({ cabin }) => {
+  const [showForm, setShowForm] = useState(false);
+  const { isDeleting, deleteCabin } = useDeleteCabin();
+  const { isCreating, createCabin } = useCreateCabin();
   const {
     name,
     id: cabinId,
@@ -52,31 +63,51 @@ const CabinRow = ({ cabin }) => {
     maxCapacity,
     regularPrice,
     discount,
+    description,
   } = cabin;
-  const queryClint = useQueryClient();
-  const { isLoading, mutate } = useMutation({
-    mutationFn: deleteCabin,
-    onSuccess: () => {
-      toast.success("cabin deleted succesfully");
-      queryClint.invalidateQueries({
-        queryKey: ["cabin"],
-      });
-    },
-    onError: (err) => {
-      toast.error(err.message);
-    },
-  });
+  const handleDuplicate = () => {
+    createCabin({
+      name: `A Copy of ${name}`,
+      image,
+      maxCapacity,
+      regularPrice,
+      discount,
+      description,
+    });
+  };
+
   return (
-    <TableRow role="row">
-      <Img src={image} />
-      <Cabin>{name}</Cabin>
-      <div>Fits up to : {maxCapacity} guests</div>
-      <Price>{formatCurrency(regularPrice)}</Price>
-      <Discount>{formatCurrency(discount)}</Discount>
-      <button disabled={isLoading} onClick={() => mutate(cabinId)}>
-        Delete
-      </button>
-    </TableRow>
+    <>
+      <TableRow role="row">
+        <Img src={image} />
+        <Cabin>{name}</Cabin>
+        <div>Fits up to : {maxCapacity} guests</div>
+        <Price>{formatCurrency(regularPrice)}</Price>
+        {discount ? (
+          <Discount>{formatCurrency(discount)}</Discount>
+        ) : (
+          <span>&mdash;</span>
+        )}
+        <IconContainer>
+          <FaEdit
+            size={24}
+            onClick={() => setShowForm(!showForm)}
+            cursor="pointer"
+          />
+          <IoDuplicate
+            size={isCreating ? 28 : 24}
+            cursor="pointer"
+            onClick={handleDuplicate}
+          />
+          <MdDelete
+            size={isDeleting ? 28 : 24}
+            cursor="pointer"
+            onClick={() => deleteCabin(cabinId)}
+          />
+        </IconContainer>
+      </TableRow>
+      {showForm && <CreateCabinForm cabinToEdit={cabin} />}
+    </>
   );
 };
 
